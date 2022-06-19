@@ -1,37 +1,33 @@
 
 
 fun main() {
+	print("starting Expr: ")
+	cli(readLine()!!)
+}
 
-	val az = Expr("α.z * (αΔ.y * βΔ.x - αΔ.x * βΔ.y) * (βΔ.y * αΔ.x - βΔ.x * αΔ.y) + αΔ.z * ((α.x - β.x) * βΔ.y - (α.y - β.y) * βΔ.x) * (βΔ.y * αΔ.x - βΔ.x * αΔ.y)")!!
-	val bz = Expr("β.z * (βΔ.y * αΔ.x - βΔ.x * αΔ.y) * (αΔ.y * βΔ.x - αΔ.x * βΔ.y) + βΔ.z * ((β.x - α.x) * αΔ.y - (β.y - α.y) * αΔ.x) * (αΔ.y * βΔ.x - αΔ.x * βΔ.y)")!!
-
-	val mapF = {term : Term ->
-		val preh = term.name.substringBefore('.')
-		val compeh = term.name.substringAfter('.')
-		val npreh = when (preh) {
-			"α" -> "a"
-			"αΔ" -> "A"
-			"β" -> "b"
-			"βΔ" -> "B"
-			else -> "?"
+fun cli(workingExpr : String) {
+	var wExpr = Expr(workingExpr)!!
+	do {
+		println(wExpr)
+		print("> ")
+		val cmd = readLine() ?: "exit"
+		wExpr = when {
+			cmd.startsWith("expand") -> wExpr.expanded()
+			cmd.startsWith("mul ") -> MulExpr(ParenExpr(wExpr), ParenExpr(Expr(cmd.removePrefix("mul "))!!))
+			cmd.startsWith("div ") -> DivExpr(ParenExpr(wExpr), ParenExpr(Expr(cmd.removePrefix("div "))!!))
+			cmd.startsWith("add ") -> AddExpr(wExpr, ParenExpr(Expr(cmd.removePrefix("add "))!!))
+			cmd.startsWith("sub ") -> SubExpr(wExpr, ParenExpr(Expr(cmd.removePrefix("sub "))!!))
+			cmd.startsWith("set ") -> Expr(cmd.removePrefix("set "))!!
+			cmd.startsWith("repl ") -> {
+				val varNam = cmd.removePrefix("repl ").substringBefore(" ")
+				val expr = Expr(cmd.removePrefix("repl ").substringAfter(" "))!!
+				wExpr.mapTerms { term : Term -> if (term.name == varNam) expr else term }
+			}
+			cmd.startsWith("printPoly") -> {
+				println(Polynomial(SumExpr(wExpr.expanded()), "T"))
+				wExpr
+			}
+			else -> wExpr
 		}
-		Expr("$npreh.$compeh + ${npreh}Δ.$compeh * T")!!
-	}
-	//α = a + aΔ * T
-	//αΔ = A + AΔ * T
-
-	//β = b + bΔ * T
-	//βΔ = B + BΔ * T
-
-	val alf = az.mapTerms(mapF).expanded()
-	val blf = bz.mapTerms(mapF).expanded()
-	val total = SubExpr(alf, ParenExpr(blf)).expanded()
-
-	val sumExpr = SumExpr(total)
-	sumExpr.terms.sortBy {prodE ->
-		prodE.terms.find { it.first.name == "T" }?.second?.toDouble() ?: 0.0
-	}
-	var totalStr = sumExpr.toString()
-	totalStr = totalStr.replace("+ ", "+\n").replace("- ", "-\n")
-	println(totalStr)
+	} while (!cmd.startsWith("exit"))
 }

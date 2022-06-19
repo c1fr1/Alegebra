@@ -36,6 +36,25 @@ class SumExpr(var terms : ArrayList<ProdExpr> = ArrayList()) {
 	}
 }
 
+class Polynomial(var terms : ArrayList<SumExpr> = ArrayList(), val termName : String) {
+
+	override fun toString() = terms.indices.map { "$termName^$it * (${terms[it]})" }.reduce {acc, next ->
+		"$acc + $next"
+	}
+	
+	companion object {
+		operator fun invoke(expr : SumExpr, term : String) : Polynomial {
+			val degree = expr.terms.maxOf { it.terms.find { t -> t.first.name == term }?.second ?: 0 }
+			val ret = Array(degree + 1) {SumExpr()}
+			for (ex in expr.terms) {
+				val i = ex.terms.find { it.first.name == term }?.second ?: 0
+				ret[i].addExpr(ProdExpr(ex.coefficient, ex.copy().terms.filter { it.first.name != term } as ArrayList))
+			}
+			return Polynomial(arrayListOf(*ret), term)
+		}
+	}
+}
+
 class ProdExpr(var coefficient : Float = 1f, val terms : ArrayList<Pair<Term, Int>> = ArrayList()) {
 
 	constructor(mulExpr : MulExpr, isNeg : Boolean = false) : this() {
@@ -77,6 +96,10 @@ class ProdExpr(var coefficient : Float = 1f, val terms : ArrayList<Pair<Term, In
 	fun addable(o : ProdExpr) : Boolean {
 		if (o.terms.size != terms.size) return false
 		return o.terms.all { oterm -> terms.any { it.first.name == oterm.first.name && it.second == oterm.second } }
+	}
+
+	fun copy() : ProdExpr {
+		return ProdExpr(coefficient, arrayListOf(*Array(terms.size) {terms[it]}))
 	}
 
 	override fun toString() : String {
